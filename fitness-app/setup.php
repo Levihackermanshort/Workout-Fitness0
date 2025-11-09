@@ -1,8 +1,6 @@
 <?php
 
 // Database setup script
-require_once __DIR__ . '/app/Database.php';
-
 echo "Setting up Fitness Journal Database...\n";
 
 try {
