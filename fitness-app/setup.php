@@ -4,16 +4,14 @@
 echo "Setting up Fitness Journal Database...\n";
 
 try {
-    // First, try to connect without specifying database to create it
-    $mysqli = new mysqli('127.0.0.1', 'root', '', '', 3306);
-    
-    if ($mysqli->connect_error) {
-        throw new Exception('Connection failed: ' . $mysqli->connect_error);
-    }
+    // Try to connect using PDO (more commonly available than mysqli)
+    $pdo = new PDO('mysql:host=127.0.0.1;port=3306', 'root', '', [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
     
     // Create database if it doesn't exist
-    $mysqli->query("CREATE DATABASE IF NOT EXISTS fitness_journal_db");
-    $mysqli->select_db('fitness_journal_db');
+    $pdo->exec("CREATE DATABASE IF NOT EXISTS fitness_journal_db");
+    $pdo->exec("USE fitness_journal_db");
     
     // Read SQL file
     $sql = file_get_contents(__DIR__ . '/database/fitness_journal_db.sql');
@@ -25,12 +23,18 @@ try {
         if ($query === '' || preg_match('/^--/', $query)) {
             continue;
         }
-        if (!$mysqli->query($query)) {
-            throw new Exception('Query failed: ' . $mysqli->error);
+        try {
+            $pdo->exec($query);
+        } catch (PDOException $e) {
+            // Ignore errors for existing tables/constraints
+            if (strpos($e->getMessage(), 'already exists') === false && 
+                strpos($e->getMessage(), 'Duplicate') === false) {
+                throw new Exception('Query failed: ' . $e->getMessage());
+            }
         }
     }
     
-    $mysqli->close();
+    $pdo = null;
     
     echo "Database setup completed successfully!\n";
     echo "Sample data has been inserted.\n";
@@ -41,6 +45,8 @@ try {
     echo "Username: sarah_w, Password: password123\n";
     echo "Username: david_b, Password: password123\n";
     
+} catch (PDOException $e) {
+    echo "Error setting up database: " . $e->getMessage() . "\n";
 } catch (Exception $e) {
     echo "Error setting up database: " . $e->getMessage() . "\n";
 }
